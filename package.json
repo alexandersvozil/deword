@@ -1,0 +1,38 @@
+{
+  "name": "deword",
+  "version": "0.1.0",
+  "description": "🪱 De-Words your documents for AI agents. Swiss army knife for Word docs.",
+  "type": "module",
+  "bin": {
+    "deword": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js"
+  },
+  "keywords": [
+    "docx",
+    "doc",
+    "word",
+    "cli",
+    "agent",
+    "llm",
+    "ai",
+    "markdown",
+    "mhtml"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "docx": "^9.6.1",
+    "fast-xml-parser": "^5.5.9",
+    "jszip": "^3.10.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
