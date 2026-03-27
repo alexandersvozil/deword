@@ -1,8 +1,8 @@
 class Deword < Formula
-  desc "🪱 De-Words your documents for AI agents — Word to markdown CLI"
+  desc "🪱 De-Words your documents for AI agents — read, edit, fill Word docs"
   homepage "https://github.com/alexandersvozil/deword"
-  url "https://registry.npmjs.org/deword/-/deword-0.1.0.tgz"
-  sha256 "422f9812ff76f99ad8eabebc646121a2592d5b017f0f7869f99f75dd6b8485d9"
+  url "https://registry.npmjs.org/deword/-/deword-0.2.0.tgz"
+  sha256 "8753764d06c1aae36fe0d4f99aac729d054452a2f46047634abd8ac7c32fa98b"
   license "MIT"
 
   depends_on "node"
