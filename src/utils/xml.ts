@@ -146,3 +146,118 @@ export function normalizeQuotes(xml: string): string {
     .replace(/\u2014/g, "&#x2014;") // em dash
     .replace(/\u2026/g, "&#x2026;"); // ellipsis
 }
+
+/**
+ * Encode text for safe inclusion in XML text nodes.
+ * Only encodes the three characters that MUST be escaped in XML text content.
+ */
+export function xmlEncode(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * Decode XML entities back to plain text.
+ * Handles named entities, decimal, and hex character references.
+ */
+export function xmlDecode(text: string): string {
+  return text
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .replace(/&amp;/g, "&");
+}
+
+/**
+ * Extract all plain text from an XML fragment by reading <w:t> elements.
+ */
+export function extractAllText(xml: string): string {
+  const texts: string[] = [];
+  const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+  let m;
+  while ((m = tRegex.exec(xml)) !== null) {
+    texts.push(xmlDecode(m[1]));
+  }
+  return texts.join("");
+}
+
+/**
+ * Replace text in OOXML content, handling run fragmentation and XML encoding.
+ *
+ * Strategy:
+ * 1. Merge adjacent runs with identical formatting (so fragmented text is contiguous)
+ * 2. For each <w:t> element, decode content and search for oldText
+ * 3. Replace and re-encode, preserving xml:space attributes
+ *
+ * @returns The modified XML and number of replacements made.
+ */
+export function replaceTextInXml(
+  xml: string,
+  oldText: string,
+  newText: string,
+  replaceAll: boolean = false
+): { xml: string; count: number } {
+  // Step 1: merge adjacent same-format runs so text is contiguous
+  const merged = mergeAdjacentRuns(xml);
+
+  // Step 2: count total occurrences across all <w:t> elements
+  let totalCount = 0;
+  const tCountRegex = /<w:t([^>]*)>([^<]*)<\/w:t>/g;
+  let cm;
+  while ((cm = tCountRegex.exec(merged)) !== null) {
+    const decoded = xmlDecode(cm[2]);
+    let pos = 0;
+    while ((pos = decoded.indexOf(oldText, pos)) !== -1) {
+      totalCount++;
+      pos += oldText.length;
+    }
+  }
+
+  if (totalCount === 0) {
+    return { xml: merged, count: 0 };
+  }
+
+  // Step 3: do the replacement
+  let replaced = 0;
+  const result = merged.replace(
+    /<w:t([^>]*)>([^<]*)<\/w:t>/g,
+    (match, attrs: string, content: string) => {
+      if (!replaceAll && replaced >= 1) return match;
+
+      const decoded = xmlDecode(content);
+      if (!decoded.includes(oldText)) return match;
+
+      let newDecoded: string;
+      if (replaceAll) {
+        const parts = decoded.split(oldText);
+        replaced += parts.length - 1;
+        newDecoded = parts.join(newText);
+      } else {
+        // Replace only the first occurrence
+        const idx = decoded.indexOf(oldText);
+        newDecoded =
+          decoded.substring(0, idx) + newText + decoded.substring(idx + oldText.length);
+        replaced++;
+      }
+
+      const encoded = xmlEncode(newDecoded);
+
+      // Preserve or add xml:space="preserve" when text has significant whitespace
+      let newAttrs = attrs;
+      const needsSpace =
+        newDecoded.startsWith(" ") || newDecoded.endsWith(" ") || newDecoded.includes("  ");
+      if (needsSpace && !attrs.includes("xml:space")) {
+        newAttrs = ' xml:space="preserve"';
+      }
+
+      return `<w:t${newAttrs}>${encoded}</w:t>`;
+    }
+  );
+
+  return { xml: result, count: replaced };
+}

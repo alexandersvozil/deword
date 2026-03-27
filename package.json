@@ -1,7 +1,7 @@
 {
   "name": "deword",
-  "version": "0.1.0",
-  "description": "🪱 De-Words your documents for AI agents. Swiss army knife for Word docs.",
+  "version": "0.2.0",
+  "description": "🪱 De-Words your documents for AI agents. Read, edit, fill forms, replace text — all without breaking formatting.",
   "type": "module",
   "bin": {
     "deword": "./dist/cli.js"
