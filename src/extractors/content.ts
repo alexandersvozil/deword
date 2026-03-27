@@ -347,6 +347,17 @@ function extractImageFromDrawing(
   };
 }
 
+/**
+ * fast-xml-parser may return a plain string, an object with #text, or undefined.
+ * Normalise to string | null.
+ */
+function extractTextValue(val: any): string | null {
+  if (val == null) return null;
+  if (typeof val === "string") return val || null;
+  if (typeof val === "object" && "#text" in val) return String(val["#text"]) || null;
+  return String(val) || null;
+}
+
 function extractMetadata(doc: UnpackedDocx): DocMetadata {
   const meta: DocMetadata = {
     title: null,
