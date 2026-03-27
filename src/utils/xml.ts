@@ -187,12 +187,92 @@ export function extractAllText(xml: string): string {
 }
 
 /**
- * Replace text in OOXML content, handling run fragmentation and XML encoding.
+ * Normalize smart/curly quotes and typographic characters to their ASCII equivalents.
+ * This allows agents to match text using regular quotes even when the document
+ * contains smart quotes (which is extremely common in Word docs).
+ */
+export function normalizeForSearch(text: string): string {
+  return text
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'") // smart single quotes → '
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"') // smart double quotes → "
+    .replace(/[\u2013\u2014]/g, "-")              // en/em dash → -
+    .replace(/\u2026/g, "...")                     // ellipsis → ...
+    .replace(/\u00A0/g, " ");                      // non-breaking space → space
+}
+
+// ── Text element info within a paragraph ───────────────────────────────────────
+
+interface TElement {
+  /** Full match string <w:t...>...</w:t> */
+  match: string;
+  /** Attributes string (e.g. ' xml:space="preserve"') */
+  attrs: string;
+  /** Raw XML-encoded content between tags */
+  rawContent: string;
+  /** Decoded text content */
+  decoded: string;
+  /** Start position of this <w:t> element in the parent string */
+  startInXml: number;
+  /** End position of this <w:t> element in the parent string */
+  endInXml: number;
+  /** Start position in concatenated paragraph text */
+  textStart: number;
+  /** End position in concatenated paragraph text */
+  textEnd: number;
+}
+
+/**
+ * Find all <w:t> elements in an XML string and return their info.
+ */
+function findTElements(xml: string): TElement[] {
+  const elements: TElement[] = [];
+  const tRegex = /<w:t([^>]*)>([^<]*)<\/w:t>/g;
+  let m;
+  let textPos = 0;
+
+  while ((m = tRegex.exec(xml)) !== null) {
+    const decoded = xmlDecode(m[2]);
+    elements.push({
+      match: m[0],
+      attrs: m[1],
+      rawContent: m[2],
+      decoded,
+      startInXml: m.index,
+      endInXml: m.index + m[0].length,
+      textStart: textPos,
+      textEnd: textPos + decoded.length,
+    });
+    textPos += decoded.length;
+  }
+
+  return elements;
+}
+
+/**
+ * Build a new <w:t> element with proper xml:space handling.
+ */
+function buildTElement(text: string, originalAttrs: string): string {
+  const encoded = xmlEncode(text);
+  let attrs = originalAttrs;
+  const needsSpace =
+    text.startsWith(" ") || text.endsWith(" ") || text.includes("  ");
+  if (needsSpace && !attrs.includes("xml:space")) {
+    attrs = ' xml:space="preserve"';
+  }
+  return `<w:t${attrs}>${encoded}</w:t>`;
+}
+
+/**
+ * Replace text in OOXML content, handling:
+ * - Run fragmentation (merges adjacent same-format runs)
+ * - Cross-run text (text split by proofErr, bookmarks, comments, etc.)
+ * - Smart quote normalization (regular quotes match smart quotes)
+ * - XML entity encoding/decoding
  *
  * Strategy:
- * 1. Merge adjacent runs with identical formatting (so fragmented text is contiguous)
- * 2. For each <w:t> element, decode content and search for oldText
- * 3. Replace and re-encode, preserving xml:space attributes
+ * 1. Merge adjacent same-format runs
+ * 2. Process each paragraph: concatenate all <w:t> text and search
+ * 3. Replace across run boundaries when needed
  *
  * @returns The modified XML and number of replacements made.
  */
@@ -202,62 +282,112 @@ export function replaceTextInXml(
   newText: string,
   replaceAll: boolean = false
 ): { xml: string; count: number } {
-  // Step 1: merge adjacent same-format runs so text is contiguous
+  // Step 1: merge adjacent same-format runs so text is contiguous where possible
   const merged = mergeAdjacentRuns(xml);
 
-  // Step 2: count total occurrences across all <w:t> elements
+  // Normalize oldText for smart-quote-insensitive matching
+  const oldNorm = normalizeForSearch(oldText);
+
   let totalCount = 0;
-  const tCountRegex = /<w:t([^>]*)>([^<]*)<\/w:t>/g;
-  let cm;
-  while ((cm = tCountRegex.exec(merged)) !== null) {
-    const decoded = xmlDecode(cm[2]);
-    let pos = 0;
-    while ((pos = decoded.indexOf(oldText, pos)) !== -1) {
-      totalCount++;
-      pos += oldText.length;
-    }
-  }
 
-  if (totalCount === 0) {
-    return { xml: merged, count: 0 };
-  }
-
-  // Step 3: do the replacement
-  let replaced = 0;
+  // Step 2: process paragraph by paragraph
+  // We match <w:p>...</w:p> and process each independently
   const result = merged.replace(
-    /<w:t([^>]*)>([^<]*)<\/w:t>/g,
-    (match, attrs: string, content: string) => {
-      if (!replaceAll && replaced >= 1) return match;
+    /(<w:p\b[^>]*>)([\s\S]*?)(<\/w:p>)/g,
+    (fullMatch, pOpen: string, pContent: string, pClose: string) => {
+      if (!replaceAll && totalCount >= 1) return fullMatch;
 
-      const decoded = xmlDecode(content);
-      if (!decoded.includes(oldText)) return match;
+      // Find and replace within this paragraph (may loop for replaceAll)
+      const { content: newContent, count } = replaceInParagraph(
+        pContent,
+        oldText,
+        oldNorm,
+        newText,
+        replaceAll ? Infinity : 1 - totalCount
+      );
 
-      let newDecoded: string;
-      if (replaceAll) {
-        const parts = decoded.split(oldText);
-        replaced += parts.length - 1;
-        newDecoded = parts.join(newText);
-      } else {
-        // Replace only the first occurrence
-        const idx = decoded.indexOf(oldText);
-        newDecoded =
-          decoded.substring(0, idx) + newText + decoded.substring(idx + oldText.length);
-        replaced++;
+      if (count > 0) {
+        totalCount += count;
+        return pOpen + newContent + pClose;
       }
 
-      const encoded = xmlEncode(newDecoded);
-
-      // Preserve or add xml:space="preserve" when text has significant whitespace
-      let newAttrs = attrs;
-      const needsSpace =
-        newDecoded.startsWith(" ") || newDecoded.endsWith(" ") || newDecoded.includes("  ");
-      if (needsSpace && !attrs.includes("xml:space")) {
-        newAttrs = ' xml:space="preserve"';
-      }
-
-      return `<w:t${newAttrs}>${encoded}</w:t>`;
+      return fullMatch;
     }
   );
 
-  return { xml: result, count: replaced };
+  return { xml: result, count: totalCount };
+}
+
+/**
+ * Find and replace text within a single paragraph's content.
+ * Handles both single-run and cross-run replacements.
+ * Re-scans after each replacement to keep positions correct.
+ */
+function replaceInParagraph(
+  pContent: string,
+  oldText: string,
+  oldNorm: string,
+  newText: string,
+  maxReplacements: number
+): { content: string; count: number } {
+  let content = pContent;
+  let count = 0;
+
+  while (count < maxReplacements) {
+    // Re-scan <w:t> elements (positions change after each replacement)
+    const tElements = findTElements(content);
+    if (tElements.length === 0) break;
+
+    // Concatenate paragraph text and normalize for search
+    const paraText = tElements.map((t) => t.decoded).join("");
+    const paraNorm = normalizeForSearch(paraText);
+
+    // Find the first occurrence
+    const idx = paraNorm.indexOf(oldNorm);
+    if (idx === -1) break;
+
+    const matchEnd = idx + oldNorm.length;
+
+    // Find affected <w:t> elements
+    const affected = tElements.filter(
+      (t) => t.textEnd > idx && t.textStart < matchEnd
+    );
+    if (affected.length === 0) break;
+
+    // Apply replacement from last affected element to first (to preserve positions)
+    for (let j = affected.length - 1; j >= 0; j--) {
+      const t = affected[j];
+      let newDecoded: string;
+
+      if (affected.length === 1) {
+        // Entire match within a single <w:t>
+        const localStart = idx - t.textStart;
+        const localEnd = matchEnd - t.textStart;
+        newDecoded =
+          t.decoded.substring(0, localStart) +
+          newText +
+          t.decoded.substring(localEnd);
+      } else if (j === 0) {
+        // First element: keep text before match, append replacement
+        newDecoded =
+          t.decoded.substring(0, idx - t.textStart) + newText;
+      } else if (j === affected.length - 1) {
+        // Last element: keep text after match
+        newDecoded = t.decoded.substring(matchEnd - t.textStart);
+      } else {
+        // Middle element: clear text
+        newDecoded = "";
+      }
+
+      const newT = buildTElement(newDecoded, t.attrs);
+      content =
+        content.substring(0, t.startInXml) +
+        newT +
+        content.substring(t.endInXml);
+    }
+
+    count++;
+  }
+
+  return { content, count };
 }
