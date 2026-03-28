@@ -1,0 +1,61 @@
+{
+  "id": "board-memo-refresh-basic",
+  "title": "Board Memo Refresh (Basic)",
+  "input": "input/board-memo-input.docx",
+  "gold": {
+    "docx": "gold/board-memo-gold.docx",
+    "pdf": "gold/board-memo-gold.pdf"
+  },
+  "candidate": {
+    "docx": "candidate/board-memo-output.docx",
+    "pdf": "candidate/board-memo-output.pdf"
+  },
+  "semantic": {
+    "mustContain": [
+      "Final Board Memo",
+      "Helios Foods — Final Board Memo",
+      "April 18, 2026",
+      "Prepared by: Maya Chen, CFO",
+      "$14.1M",
+      "$3.2M",
+      "CONFIDENTIAL — BOARD REVIEW",
+      "March 30, 2026",
+      "draft scenario model",
+      "The vendor readiness assessment informed the staffing plan for the first wave of distributor onboarding."
+    ],
+    "mustNotContain": [
+      "Helios Foods — Draft Board Memo",
+      "Prepared by: Lena Ortiz, Interim CFO",
+      "$12.4M",
+      "$2.8M",
+      "INTERNAL DRAFT — DO NOT DISTRIBUTE"
+    ]
+  },
+  "footnotesXml": {
+    "mustContain": [
+      "March 30, 2026",
+      "Assessment drafted April 2, 2026 from confirmed distributor staffing assumptions."
+    ],
+    "mustNotContain": [
+      "January 12, 2026",
+      "Assessment drafted February 3, 2026 from preliminary distributor staffing assumptions."
+    ],
+    "notes": [
+      "The second footnote is intentionally absent from the input doc and must be added in the candidate/gold output.",
+      "Judge this by inspecting word/footnotes.xml and visually checking the superscript marker on the word 'assessment'."
+    ]
+  },
+  "visual": {
+    "expectedPageCount": 3,
+    "compareMethod": "export-to-pdf-and-compare-to-gold",
+    "notes": [
+      "Use the same machine and same Word installation for gold and candidate exports.",
+      "Compare PDFs page by page or via screenshots.",
+      "Small line-wrap differences are acceptable only if semantic content is correct and layout is clearly intact."
+    ]
+  },
+  "health": {
+    "mustOpenInWord": true,
+    "mustExportToPdf": true
+  }
+}
