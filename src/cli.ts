@@ -15,7 +15,7 @@ const program = new Command();
 program
   .name("deword")
   .description("🪱 De-Words your documents for AI agents")
-  .version("0.2.1")
+  .version("0.3.0")
   .addHelpText(
     "after",
     `
