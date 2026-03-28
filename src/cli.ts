@@ -8,24 +8,58 @@ import { runFields } from "./commands/fields.js";
 import { runFill } from "./commands/fill.js";
 import { runXml } from "./commands/xmlCmd.js";
 import { runReplace } from "./commands/replace.js";
+import { runPatch } from "./commands/patch.js";
 
 const program = new Command();
 
 program
   .name("deword")
   .description("🪱 De-Words your documents for AI agents")
-  .version("0.2.1");
+  .version("0.2.1")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  deword read report.docx
+  deword read report.docx -f model
+  deword edit report.docx --old "Draft" --new "Final"
+  deword replace report.docx --map replacements.json
+  deword patch report.docx -p patch.json -o final.docx
+  deword xml report.docx --list
+
+Recommended agent workflow:
+  1. deword read <file> -f model   # inspect structure and IDs
+  2. deword patch <file> -p ...    # apply multi-step structured edits
+  3. deword read <file>            # verify semantics
+  4. open in Word for final visual check when layout matters
+`
+  );
 
 program
   .command("read")
   .description("Read a .docx or .doc (MHTML) file and output contents to stdout")
   .argument("<file>", "Path to .docx or .doc file")
-  .option("-f, --format <format>", "Output format: markdown, json, summary", "markdown")
+  .option("-f, --format <format>", "Output format: markdown, json, summary, model", "markdown")
   .option("-i, --images <dir>", "Override image extraction directory (default: auto temp dir)")
+  .addHelpText(
+    "after",
+    `
+Formats:
+  markdown  Human/agent-readable content with extracted image paths
+  json      Structured content + metadata
+  summary   Short metadata + preview
+  model     Agent-friendly structure with paragraph/table/footnote IDs
+
+Examples:
+  deword read report.docx
+  deword read report.docx -f model
+  deword read report.docx -f json -i ./images
+`
+  )
   .action(async (file: string, opts: { format: string; images?: string }) => {
     try {
       await runRead(file, {
-        format: opts.format as "markdown" | "json" | "summary",
+        format: opts.format as "markdown" | "json" | "summary" | "model",
         imageDir: opts.images,
       });
     } catch (err) {
@@ -65,6 +99,16 @@ program
   .requiredOption("--old <text>", "Exact text to find (must be unique)")
   .requiredOption("--new <text>", "Replacement text")
   .option("-o, --output <file>", "Write to a different file instead of editing in-place")
+  .addHelpText(
+    "after",
+    `
+Use edit for one surgical replacement.
+If the text appears more than once, deword fails and tells you to add context.
+
+Example:
+  deword edit report.docx --old "Draft Report" --new "Final Report"
+`
+  )
   .action(async (file: string, opts: { old: string; new: string; output?: string }) => {
     try {
       await runEdit(file, { old: opts.old, new: opts.new, output: opts.output });
@@ -171,6 +215,16 @@ program
   .option("--new <text>", "Replacement text")
   .option("--map <file>", "JSON file mapping old text → new text")
   .option("-o, --output <file>", "Write to a different file instead of editing in-place")
+  .addHelpText(
+    "after",
+    `
+Use replace for template filling or global replacements.
+
+Examples:
+  deword replace report.docx --old "{{NAME}}" --new "John Smith"
+  deword replace report.docx --map replacements.json
+`
+  )
   .action(
     async (file: string, opts: { old?: string; new?: string; map?: string; output?: string }) => {
       try {
@@ -186,5 +240,47 @@ program
       }
     }
   );
+
+program
+  .command("patch")
+  .description("Apply a high-level JSON patch plan to a .docx file")
+  .argument("<file>", "Path to .docx file")
+  .option("-p, --patch <file>", "Path to patch JSON file (reads stdin if omitted)")
+  .option("-i, --input <file>", "Alias for --patch")
+  .option("-o, --output <file>", "Write to a different file instead of editing in-place")
+  .addHelpText(
+    "after",
+    `
+Patch is the main multi-step editing interface for agents.
+Typical flow:
+  deword read report.docx -f model
+  deword patch report.docx -p patch.json
+
+Common patch ops:
+  replace_text, replace_all, edit_paragraph, insert_paragraph,
+  insert_footnote, edit_footnote, insert_table, edit_table_cell,
+  append_table_row, insert_image, set_region_text, fill_field, set_checkbox
+
+Minimal example patch:
+  {
+    "version": "1.0",
+    "operations": [
+      {
+        "op": "replace_text",
+        "target": { "by_text": { "text": "Draft Report", "match": "exact" } },
+        "new_text": "Final Report"
+      }
+    ]
+  }
+`
+  )
+  .action(async (file: string, opts: { patch?: string; input?: string; output?: string }) => {
+    try {
+      await runPatch(file, { patchFile: opts.patch, input: opts.input, output: opts.output });
+    } catch (err) {
+      console.error(`Error: ${err instanceof Error ? err.message : err}`);
+      process.exit(1);
+    }
+  });
 
 program.parse();

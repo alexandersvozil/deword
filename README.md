@@ -32,6 +32,12 @@ deword replace report.docx --map replacements.json
 # Fill form fields
 deword fill form.docx --field "Employee Name" --value "John Smith"
 deword fill form.docx --field "I agree" --check
+
+# Read an agent-friendly document model
+deword read report.docx -f model
+
+# Apply a high-level JSON patch plan
+deword patch report.docx -p patch.json -o final.docx
 ```
 
 ## Reading
@@ -39,6 +45,8 @@ deword fill form.docx --field "I agree" --check
 ```bash
 deword read report.docx              # markdown (default)
 deword read report.docx -f json      # structured JSON
+
+deword read report.docx -f model     # agent-friendly model with paragraph/table IDs
 deword read report.docx -f summary   # metadata + preview
 deword read report.docx -i ./imgs    # custom image output dir
 ```
@@ -88,6 +96,63 @@ Batch JSON format (strings for text, booleans for checkboxes):
 ```json
 {"Employee Name": "John Smith", "Start Date": "2025-01-15", "I agree": true}
 ```
+
+### `patch` — high-level agent editing plan
+
+```bash
+deword patch report.docx -p patch.json
+deword patch report.docx -p patch.json -o final.docx
+```
+
+Example patch:
+
+```json
+{
+  "version": "1.0",
+  "operations": [
+    {
+      "op": "replace_text",
+      "target": { "by_text": { "text": "Draft Report", "match": "exact" } },
+      "new_text": "Final Report"
+    },
+    {
+      "op": "insert_footnote",
+      "anchor": { "by_text": { "text": "assumption", "match": "exact" } },
+      "footnote_text": "Confirmed with finance on 2026-03-28."
+    },
+    {
+      "op": "insert_table",
+      "location": { "after": { "by_heading": { "text": "Financial Summary", "level": 2 } } },
+      "data": [["Metric", "Value"], ["Revenue", "$14.1M"]],
+      "table_style": "professional"
+    },
+    {
+      "op": "insert_image",
+      "location": { "after": { "by_heading": { "text": "Market Overview", "level": 1 } } },
+      "file_path": "chart.png",
+      "width_px": 480,
+      "alignment": "center",
+      "caption": "Figure 1. Regional sales chart"
+    }
+  ]
+}
+```
+
+Currently supported patch ops:
+
+- `replace_text`
+- `replace_all`
+- `edit_paragraph`
+- `insert_paragraph`
+- `insert_footnote`
+- `edit_footnote`
+- `insert_table`
+- `edit_table_cell`
+- `append_table_row`
+- `insert_image`
+- `set_region_text`
+- `fill_field`
+- `set_checkbox`
 
 ### `xml` — safe escape hatch
 

@@ -5,12 +5,13 @@ import { htmlToExtractedContent } from "../extractors/html.js";
 import { mergeAdjacentRuns } from "../utils/xml.js";
 import { detectFileType } from "../utils/detect.js";
 import { formatMarkdown, formatJson, formatSummary } from "../utils/format.js";
+import { buildWordModel } from "../utils/wordModel.js";
 import { mkdir, writeFile } from "fs/promises";
 import { join, basename, resolve, parse as parsePath } from "path";
 import { tmpdir } from "os";
 
 export interface ReadOptions {
-  format: "markdown" | "json" | "summary";
+  format: "markdown" | "json" | "summary" | "model";
   imageDir?: string;
 }
 
@@ -91,6 +92,12 @@ export async function runRead(filePath: string, options: ReadOptions): Promise<v
       break;
     case "summary":
       process.stdout.write(formatSummary(content));
+      break;
+    case "model":
+      if (type !== "docx") {
+        throw new Error("Model output is currently supported for .docx files only.");
+      }
+      process.stdout.write(JSON.stringify(await buildWordModel(filePath, content), null, 2) + "\n");
       break;
   }
 }

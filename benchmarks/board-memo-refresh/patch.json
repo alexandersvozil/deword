@@ -1,0 +1,61 @@
+{
+  "version": "1.0",
+  "output_path": "benchmarks/board-memo-refresh/candidate/board-memo-output.docx",
+  "operations": [
+    {
+      "op": "replace_text",
+      "target": { "by_text": { "text": "Draft Board Memo", "match": "exact", "occurrence": 1 } },
+      "new_text": "Final Board Memo"
+    },
+    {
+      "op": "replace_text",
+      "target": { "by_text": { "text": "Prepared by: Lena Ortiz, Interim CFO", "match": "exact", "occurrence": 1 } },
+      "new_text": "Prepared by: Maya Chen, CFO"
+    },
+    {
+      "op": "replace_all",
+      "find": { "text": "March 21, 2026", "match": "exact" },
+      "new_text": "April 18, 2026",
+      "scope": "body"
+    },
+    {
+      "op": "replace_all",
+      "find": { "text": "$12.4M", "match": "exact" },
+      "new_text": "$14.1M",
+      "scope": "body"
+    },
+    {
+      "op": "replace_all",
+      "find": { "text": "$2.8M", "match": "exact" },
+      "new_text": "$3.2M",
+      "scope": "body"
+    },
+    {
+      "op": "set_region_text",
+      "target": { "by_region": { "kind": "header", "section": "all", "slot": "default" } },
+      "text": "Helios Foods — Final Board Memo"
+    },
+    {
+      "op": "set_region_text",
+      "target": { "by_region": { "kind": "footer", "section": "all", "slot": "default" } },
+      "text": "CONFIDENTIAL — BOARD REVIEW"
+    },
+    {
+      "op": "edit_footnote",
+      "target": { "by_id": "fn1" },
+      "new_text": "Forecast model updated March 30, 2026 using regional sell-through data."
+    },
+    {
+      "op": "insert_footnote",
+      "anchor": {
+        "by_text": {
+          "text": "assessment",
+          "match": "exact",
+          "occurrence": 1,
+          "within": { "heading_text": "Notes" }
+        }
+      },
+      "footnote_text": "Assessment drafted April 2, 2026 from confirmed distributor staffing assumptions."
+    }
+  ]
+}
