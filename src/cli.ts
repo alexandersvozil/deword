@@ -9,6 +9,7 @@ import { runFill } from "./commands/fill.js";
 import { runXml } from "./commands/xmlCmd.js";
 import { runReplace } from "./commands/replace.js";
 import { runPatch } from "./commands/patch.js";
+import { runNew } from "./commands/new.js";
 
 const program = new Command();
 
@@ -20,6 +21,7 @@ program
     "after",
     `
 Examples:
+  deword new report.docx
   deword read report.docx
   deword read report.docx -f model
   deword edit report.docx --old "Draft" --new "Final"
@@ -34,6 +36,31 @@ Recommended agent workflow:
   4. open in Word for final visual check when layout matters
 `
   );
+
+program
+  .command("new")
+  .alias("create")
+  .description("Create a new .docx file from the bundled template")
+  .argument("<file>", "Path to the new .docx file")
+  .option("--text <text>", "Replace the default <empty> placeholder with initial text")
+  .option("-f, --force", "Overwrite the output file if it already exists")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  deword new note.docx
+  deword new note.docx --text "Project kickoff notes"
+  deword create drafts/memo.docx
+`
+  )
+  .action(async (file: string, opts: { text?: string; force?: boolean }) => {
+    try {
+      await runNew(file, { text: opts.text, force: opts.force });
+    } catch (err) {
+      console.error(`Error: ${err instanceof Error ? err.message : err}`);
+      process.exit(1);
+    }
+  });
 
 program
   .command("read")

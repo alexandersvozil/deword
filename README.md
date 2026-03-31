@@ -20,6 +20,9 @@ npx deword read report.docx
 ## Quick start
 
 ```bash
+# Create a new document from the bundled template
+deword new report.docx
+
 # Read
 deword read report.docx
 
@@ -39,6 +42,16 @@ deword read report.docx -f model
 # Apply a high-level JSON patch plan
 deword patch report.docx -p patch.json -o final.docx
 ```
+
+## Creating new documents
+
+```bash
+deword new report.docx
+deword new report.docx --text "Quarterly Board Memo"
+deword create drafts/note.docx
+```
+
+Creates a new `.docx` from the bundled template. By default the document contains a single `<empty>` placeholder so agents can immediately target it with `deword edit`, `deword replace`, or `deword patch`. Use `--text` to replace that placeholder during creation.
 
 ## Reading
 

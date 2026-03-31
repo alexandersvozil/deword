@@ -8,6 +8,7 @@
   },
   "files": [
     "dist",
+    "assets",
     "skill",
     "AGENTS.md",
     "README.md"

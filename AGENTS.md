@@ -1,6 +1,6 @@
 # 🪱 deword — Agent Instructions
 
-You have access to `deword`, a CLI tool that reads and edits Word documents (.docx, .doc) without breaking formatting.
+You have access to `deword`, a CLI tool that creates, reads, and edits Word documents (.docx, .doc) without breaking formatting.
 
 ## Installation check
 
@@ -14,6 +14,15 @@ If not installed, install with one of:
 brew install alexandersvozil/tap/deword   # macOS/Linux
 npm install -g deword                      # any platform with Node.js
 ```
+
+## Creating a new Word document
+
+```bash
+deword new <file>                    # create a new .docx from the bundled template
+deword new <file> --text "Hello"    # replace the default <empty> placeholder immediately
+```
+
+**Template behavior:** New documents contain a single `<empty>` placeholder by default so agents can target it right away with `deword edit`, `deword replace`, or `deword patch`.
 
 ## Reading a Word document
 
@@ -100,6 +109,7 @@ Creates: `CONTENT.md`, `content.json`, `xml/` (prettified XML), `media/` (images
 
 ## Tips
 
+- Use `deword new` when you need to create a fresh `.docx` for later editing
 - **Always use `deword read` first** to understand the document before editing
 - Use `deword edit` for surgical single replacements (like Pi's `edit` tool)
 - Use `deword replace` for batch/template replacements (replaces all occurrences)

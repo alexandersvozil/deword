@@ -1,6 +1,6 @@
 ---
 name: deword
-description: Read, edit, and fill Word documents (.docx, .doc). Converts to markdown, replaces text, fills form fields, checks checkboxes — all without breaking formatting. Use when you need to read, modify, fill out, or update any Word document.
+description: Create, read, edit, and fill Word documents (.docx, .doc). Converts to markdown, replaces text, fills form fields, checks checkboxes — all without breaking formatting. Use when you need to create, read, modify, fill out, or update any Word document.
 ---
 
 # deword — Word Document Reader & Editor
@@ -11,6 +11,15 @@ description: Read, edit, and fill Word documents (.docx, .doc). Converts to mark
 brew install alexandersvozil/tap/deword   # macOS/Linux
 npm install -g deword                      # any platform with Node.js
 ```
+
+## Create a new document
+
+```bash
+deword new document.docx
+deword new document.docx --text "Project kickoff notes"
+```
+
+New documents are created from a bundled template. By default they contain a single `<empty>` placeholder so you can immediately replace it with `edit`, `replace`, or `patch`.
 
 ## Read a document
 
@@ -86,12 +95,13 @@ deword xml document.docx --set word/document.xml -i modified.xml  # replace file
 
 The XML commands handle ZIP repacking safely — validates XML before writing.
 
-## Workflow: read → edit → verify
+## Workflow: create/read → edit → verify
 
 ```bash
-deword read document.docx                # 1. see what's there
-deword edit document.docx --old "..." --new "..."  # 2. make changes
-deword read document.docx                # 3. verify
+deword new document.docx                          # 0. create a new file when needed
+deword read document.docx                         # 1. see what's there
+deword edit document.docx --old "..." --new "..."   # 2. make changes
+deword read document.docx                         # 3. verify
 ```
 
 ## Supported formats
