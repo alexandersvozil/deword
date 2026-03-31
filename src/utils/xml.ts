@@ -174,11 +174,11 @@ export function xmlDecode(text: string): string {
 }
 
 /**
- * Extract all plain text from an XML fragment by reading <w:t> elements.
+ * Extract all plain text from an XML fragment by reading <w:t> and <m:t> elements.
  */
 export function extractAllText(xml: string): string {
   const texts: string[] = [];
-  const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+  const tRegex = /<(?:w|m):t[^>]*>([^<]*)<\/(?:w|m):t>/g;
   let m;
   while ((m = tRegex.exec(xml)) !== null) {
     texts.push(xmlDecode(m[1]));

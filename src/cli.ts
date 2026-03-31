@@ -10,30 +10,64 @@ import { runXml } from "./commands/xmlCmd.js";
 import { runReplace } from "./commands/replace.js";
 import { runPatch } from "./commands/patch.js";
 import { runNew } from "./commands/new.js";
+import { runFormula } from "./commands/formula.js";
 
 const program = new Command();
 
+program.showHelpAfterError();
+program.showSuggestionAfterError();
+
 program
   .name("deword")
-  .description("🪱 De-Words your documents for AI agents")
-  .version("0.3.0")
+  .description("🪱 Create, read, edit, fill, patch, and add real equations to Word documents")
+  .version("0.3.1")
   .addHelpText(
     "after",
     `
+First-time agent quickstart:
+  deword help
+  deword new draft.docx
+  deword read draft.docx -f summary
+  deword formula draft.docx --replace "<empty>" --latex "E = mc^2"
+  deword read draft.docx
+
+Pick the right command:
+  new      create a fresh .docx from the bundled template
+  read     inspect content as markdown, json, summary, or model
+  formula  insert a real Word equation (OMML / Math Mode)
+  edit     replace exactly one unique text occurrence
+  replace  replace all occurrences / fill placeholders in bulk
+  fields   list form fields / checkboxes
+  fill     fill form fields or checkboxes
+  patch    do multi-step structural edits from JSON
+  unpack   export markdown/json/xml/media for deep inspection
+  xml      raw ZIP/XML escape hatch when nothing else fits
+
 Examples:
   deword new report.docx
+  deword formula report.docx --replace "<empty>" --latex "E = mc^2"
   deword read report.docx
   deword read report.docx -f model
   deword edit report.docx --old "Draft" --new "Final"
   deword replace report.docx --map replacements.json
+  deword fields form.docx
+  deword fill form.docx --field "I agree" --check
   deword patch report.docx -p patch.json -o final.docx
   deword xml report.docx --list
 
-Recommended agent workflow:
-  1. deword read <file> -f model   # inspect structure and IDs
-  2. deword patch <file> -p ...    # apply multi-step structured edits
-  3. deword read <file>            # verify semantics
-  4. open in Word for final visual check when layout matters
+Recommended workflow:
+  1. existing doc? deword read <file> -f summary
+  2. structural work? deword read <file> -f model
+  3. choose edit / replace / fill / formula / patch
+  4. deword read <file>            # verify semantics
+  5. open in Word for final visual check when layout matters
+
+Notes:
+  - .docx: full support for reading and editing
+  - .doc (MHTML/Web Page): read only
+  - legacy binary .doc: not supported
+  - formulas are inserted as real Word equations, not plain text
+  - use 'deword help <command>' for detailed command help
 `
   );
 
@@ -61,6 +95,69 @@ Examples:
       process.exit(1);
     }
   });
+
+program
+  .command("formula")
+  .alias("math")
+  .description("Insert a math formula as a real Word equation (OMML)")
+  .argument("<file>", "Path to .docx file")
+  .requiredOption("--latex <formula>", 'LaTeX-style formula, e.g. "\\frac{a}{b} = c^2"')
+  .option("--after <text>", "Insert after a uniquely matched body paragraph")
+  .option("--before <text>", "Insert before a uniquely matched body paragraph")
+  .option("--replace <text>", "Replace a uniquely matched body paragraph with the formula")
+  .option("--append", "Append the formula at the end of the document body")
+  .option("--match <mode>", "Paragraph match mode: exact, contains, regex")
+  .option("--occurrence <n>", "Use the nth matching paragraph", (value) => parseInt(value, 10), 1)
+  .option("--align <alignment>", "Equation alignment: left, center, right", "center")
+  .option("-o, --output <file>", "Write to a different file instead of editing in-place")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  deword formula note.docx --replace "<empty>" --latex "E = mc^2"
+  deword formula report.docx --after "Financial Model" --latex "\\frac{Revenue - Cost}{Revenue}"
+  deword math report.docx --append --latex "x_1 + x_2 = y"
+
+Supported syntax (common subset):
+  superscripts/subscripts: x^2, x_1, x_1^2
+  fractions: \\frac{a+b}{c}
+  radicals: \\sqrt{x}, \\sqrt[n]{x}
+  Greek/symbols: \\alpha, \\beta, \\pi, \\leq, \\geq, \\neq, \\infty
+`
+  )
+  .action(
+    async (
+      file: string,
+      opts: {
+        latex: string;
+        after?: string;
+        before?: string;
+        replace?: string;
+        append?: boolean;
+        match?: string;
+        occurrence: number;
+        align: string;
+        output?: string;
+      }
+    ) => {
+      try {
+        await runFormula(file, {
+          latex: opts.latex,
+          after: opts.after,
+          before: opts.before,
+          replace: opts.replace,
+          append: opts.append,
+          output: opts.output,
+          match: opts.match as "exact" | "contains" | "regex",
+          occurrence: opts.occurrence,
+          align: opts.align as "left" | "center" | "right",
+        });
+      } catch (err) {
+        console.error(`Error: ${err instanceof Error ? err.message : err}`);
+        process.exit(1);
+      }
+    }
+  );
 
 program
   .command("read")

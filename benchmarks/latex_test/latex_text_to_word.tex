@@ -1,0 +1,46 @@
+\documentclass{article}
+\usepackage{amsmath} % Required for advanced math features like 'align'
+\title{A Sample Document with Mathematics}
+\author{My Name}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+\LaTeX{} is excellent for writing documents with mathematical notation. Mathematical expressions can be included inline within a paragraph using single dollar signs, like this: the famous Pythagorean theorem is often written as $a^2 + b^2 = c^2$.
+
+\section{Displayed Equations}
+For equations that need to be on their own line and possibly numbered, the `equation` environment is ideal.
+
+\begin{equation}
+E = mc^2 \label{eq:einstein}
+\end{equation}
+
+Equation \ref{eq:einstein} is the mass-energy equivalence principle.
+
+For unnumbered displayed equations, you can use double dollar signs (`$$...$$`) or `\[...\]` (the latter is preferred).
+
+\[
+\sum_{i=1}^{N} i = \frac{N(N+1)}{2}
+\]
+
+\section{Advanced Mathematics}
+The `amsmath` package provides environments for more complex or aligned equations, such as the `align*` environment (the asterisk prevents numbering).
+
+\begin{align*}
+f(x) &= (x+1)^2 \\
+     &= x^2 + 2x + 1
+\end{align*}
+
+We can also include matrices using environments like `pmatrix` or `array`.
+
+\[
+A = \begin{pmatrix}
+a_{11} & a_{12} \\
+a_{21} & a_{22}
+\end{pmatrix}
+\]
+
+\end{document}

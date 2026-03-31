@@ -2,4 +2,11 @@ node_modules/
 dist/
 *.docx
 *.doc
+!assets/new_document.docx
+!benchmarks/latex_test/latex_text_to_word.docx
+benchmarks/latex_test/*.aux
+benchmarks/latex_test/*.fdb_latexmk
+benchmarks/latex_test/*.fls
+benchmarks/latex_test/*.log
+benchmarks/latex_test/*.synctex.gz
 .DS_Store

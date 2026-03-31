@@ -1,6 +1,6 @@
 {
   "name": "deword",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "🪱 De-Words your documents for AI agents. Read, edit, fill forms, replace text — all without breaking formatting.",
   "type": "module",
   "bin": {

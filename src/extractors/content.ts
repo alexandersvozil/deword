@@ -242,10 +242,56 @@ function extractParagraph(
     }
   }
 
+  const mathText = extractMathText(p?.["m:oMath"]) || extractMathText(p?.["m:oMathPara"]);
+  if (mathText) {
+    textParts.push(mathText);
+  }
+
   const fullText = prefix + textParts.join("");
   // Return null for truly empty paragraphs (not even whitespace)
   if (fullText.trim() === "") return "";
   return fullText;
+}
+
+function extractMathText(node: any): string {
+  if (!node) return "";
+  if (typeof node === "string") return node;
+  if (Array.isArray(node)) return node.map(extractMathText).join("");
+
+  return Object.keys(node)
+    .filter((key) => key.startsWith("m:"))
+    .map((key) => renderMathKey(key, node[key]))
+    .join("");
+}
+
+function renderMathKey(key: string, value: any): string {
+  if (Array.isArray(value)) {
+    return value.map((item) => renderMathKey(key, item)).join("");
+  }
+  if (key === "m:t") {
+    return typeof value === "object" ? String(value["#text"] ?? "") : String(value ?? "");
+  }
+  if (key === "m:f") {
+    return `(${extractMathText(value["m:num"])})/(${extractMathText(value["m:den"])})`;
+  }
+  if (key === "m:sSup") {
+    return `${extractMathText(value["m:e"])}^(${extractMathText(value["m:sup"])})`;
+  }
+  if (key === "m:sSub") {
+    return `${extractMathText(value["m:e"])}_(${extractMathText(value["m:sub"])})`;
+  }
+  if (key === "m:sSubSup") {
+    return `${extractMathText(value["m:e"])}_(${extractMathText(value["m:sub"])})^(${extractMathText(value["m:sup"])})`;
+  }
+  if (key === "m:rad") {
+    const degree = extractMathText(value["m:deg"]);
+    const expr = extractMathText(value["m:e"]);
+    return degree ? `root(${degree})(${expr})` : `sqrt(${expr})`;
+  }
+  if (key === "m:d") {
+    return `(${extractMathText(value["m:e"] ?? value)})`;
+  }
+  return extractMathText(value);
 }
 
 function extractTable(

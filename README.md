@@ -1,8 +1,8 @@
 # 🪱 deword
 
-**De-Words your documents for AI agents.**
+**Create, read, edit, fill, patch, and add real equations to Word documents — without breaking formatting.**
 
-Word docs are the worst format for LLMs — bloated XML, fragmented text, images trapped in ZIP archives. `deword` rips that away and gives your agent clean markdown + images. And now it can **edit them too** — text replacement, form filling, batch replace — all without breaking formatting.
+Word docs are awful for agents: ZIP archives, fragmented runs, hidden media, and XML everywhere. `deword` turns them into something agents can actually work with, and now also lets them create new `.docx` files and insert real Microsoft Word equations.
 
 ## Install
 
@@ -13,9 +13,44 @@ brew install alexandersvozil/tap/deword
 # npm (any platform with Node.js 18+)
 npm install -g deword
 
-# Or just run it directly — no install needed
-npx deword read report.docx
+# Zero-install
+npx deword --help
 ```
+
+## First-time agent quick start
+
+If you are seeing `deword` for the first time, start here:
+
+```bash
+deword help
+deword new draft.docx
+deword read draft.docx -f summary
+deword formula draft.docx --replace "<empty>" --latex "E = mc^2"
+deword read draft.docx
+```
+
+For an existing document:
+
+```bash
+deword read report.docx -f summary
+deword read report.docx -f model
+```
+
+## Pick the right command
+
+| Need | Command |
+|---|---|
+| Create a new `.docx` | `deword new <file>` |
+| Inspect a document | `deword read <file>` |
+| Get structure for agent work | `deword read <file> -f model` |
+| Insert a real Word equation | `deword formula <file> ...` |
+| Replace one exact unique string | `deword edit <file> --old ... --new ...` |
+| Replace all occurrences / placeholders | `deword replace <file> --old ... --new ...` or `--map` |
+| List form fields | `deword fields <file>` |
+| Fill fields / checkboxes | `deword fill <file> ...` |
+| Do multi-step structural edits | `deword patch <file> -p patch.json` |
+| Inspect unpacked XML/media | `deword unpack <file>` |
+| Use raw XML as an escape hatch | `deword xml <file> ...` |
 
 ## Quick start
 
@@ -26,10 +61,13 @@ deword new report.docx
 # Read
 deword read report.docx
 
-# Edit (like Pi's edit tool — unique text, in-place)
+# Insert a real Word equation (OMML / Math Mode)
+deword formula report.docx --replace "<empty>" --latex "E = mc^2"
+
+# Edit one exact unique text occurrence
 deword edit report.docx --old "Draft Report" --new "Final Report"
 
-# Replace all occurrences (batch/template mode)
+# Replace all occurrences / template placeholders
 deword replace report.docx --map replacements.json
 
 # Fill form fields
@@ -51,24 +89,63 @@ deword new report.docx --text "Quarterly Board Memo"
 deword create drafts/note.docx
 ```
 
-Creates a new `.docx` from the bundled template. By default the document contains a single `<empty>` placeholder so agents can immediately target it with `deword edit`, `deword replace`, or `deword patch`. Use `--text` to replace that placeholder during creation.
+Creates a new `.docx` from the bundled template.
+
+By default the document contains a single `<empty>` placeholder so agents can immediately target it with:
+- `deword edit`
+- `deword replace`
+- `deword formula`
+- `deword patch`
+
+Use `--text` to replace the placeholder during creation.
+
+## Formulas / equations
+
+```bash
+deword formula report.docx --replace "<empty>" --latex "E = mc^2"
+deword formula report.docx --after "Financial Model" --latex "\\frac{Revenue - Cost}{Revenue}"
+deword math report.docx --append --latex "x_1 + x_2 = y"
+```
+
+This inserts a **real Microsoft Word equation** in **OMML / Math Mode**. The result opens in Word as an actual editable equation, not plain text and not hand-written XML.
+
+### Supported syntax today
+
+Practical LaTeX-style subset:
+
+- superscripts/subscripts: `x^2`, `x_1`, `x_1^2`
+- fractions: `\\frac{a+b}{c}`
+- radicals: `\\sqrt{x}`, `\\sqrt[n]{x}`
+- functions: `\\sin(x)`, `\\log(x)`
+- common Greek letters / symbols: `\\alpha`, `\\beta`, `\\pi`, `\\leq`, `\\geq`, `\\neq`, `\\infty`
+
+### Location modes
+
+- `--replace "..."` replace a uniquely matched body paragraph
+- `--after "..."` insert after a uniquely matched body paragraph
+- `--before "..."` insert before a uniquely matched body paragraph
+- `--append` append to the end of the document body
+
+### Current scope
+
+`formula` currently inserts **displayed equation paragraphs**. It is ideal when you want a standalone formula block in Word. For more advanced layout or unsupported math syntax, use multiple formula insertions, `patch`, or `xml` as a last resort.
 
 ## Reading
 
 ```bash
 deword read report.docx              # markdown (default)
 deword read report.docx -f json      # structured JSON
-
-deword read report.docx -f model     # agent-friendly model with paragraph/table IDs
+deword read report.docx -f model     # agent-friendly structure with IDs
 deword read report.docx -f summary   # metadata + preview
-deword read report.docx -i ./imgs    # custom image output dir
+deword read report.docx -i ./imgs    # custom image extraction dir
 ```
 
-- **Markdown** with headings, **bold**, *italic*, tables, links preserved
-- **Images** auto-extracted to `$TMPDIR/deword/<file>/images/`
-- **Tables** as proper markdown tables
-- **Metadata** (title, author, dates) in YAML frontmatter
-- Fragmented Word runs merged (spell-check splits `"Hello"` across 3 XML elements — we fix that)
+What you get:
+- markdown with headings, bold, italic, tables, and links preserved
+- images auto-extracted to a temp directory by default
+- metadata in YAML frontmatter
+- merged fragmented Word runs for cleaner reading
+- formula previews rendered as readable plain text in `read`
 
 ## Editing
 
@@ -79,7 +156,14 @@ deword edit report.docx --old "Q4 2025" --new "Q4 FY2025"
 deword edit report.docx --old "Draft" --new "Final" -o final.docx
 ```
 
-Like Pi's `edit` tool: the old text must match **exactly once** across the entire document (body, headers, footers, footnotes). If it matches 0 or >1 times, you get a clear error telling you to add more context. Edits in-place by default.
+Use `edit` when the old text should match **exactly once** across the document. If it matches 0 or more than 1 times, deword fails and tells you to add more context.
+
+Search scope includes:
+- body
+- headers
+- footers
+- footnotes
+- endnotes
 
 ### `replace` — batch/template replacement
 
@@ -88,36 +172,48 @@ deword replace report.docx --old "{{NAME}}" --new "John Smith"
 deword replace report.docx --map replacements.json
 ```
 
-Replaces **all** occurrences. JSON map format:
+Replaces **all** occurrences.
+
+JSON map format:
 
 ```json
-{"{{NAME}}": "John Smith", "{{DATE}}": "2025-01-15", "{{COMPANY}}": "Acme"}
+{
+  "{{NAME}}": "John Smith",
+  "{{DATE}}": "2025-01-15",
+  "{{COMPANY}}": "Acme"
+}
 ```
 
-### `fill` — form fields and checkboxes
+### `fields` / `fill` — form fields and checkboxes
 
 ```bash
-deword fields form.docx                              # list all fields
-deword fields form.docx -f json                      # structured JSON
-deword fill form.docx --field "Name" --value "John"  # fill text field
-deword fill form.docx --field "I agree" --check      # check checkbox
-deword fill form.docx --json data.json               # batch fill
+deword fields form.docx
+deword fields form.docx -f json
+deword fill form.docx --field "Name" --value "John"
+deword fill form.docx --field "I agree" --check
+deword fill form.docx --json data.json
 ```
 
-Batch JSON format (strings for text, booleans for checkboxes):
+Batch JSON format:
 
 ```json
-{"Employee Name": "John Smith", "Start Date": "2025-01-15", "I agree": true}
+{
+  "Employee Name": "John Smith",
+  "Start Date": "2025-01-15",
+  "I agree": true
+}
 ```
 
-### `patch` — high-level agent editing plan
+## `patch` — high-level agent editing plan
 
 ```bash
 deword patch report.docx -p patch.json
 deword patch report.docx -p patch.json -o final.docx
 ```
 
-Example patch:
+Use `patch` for multi-step or structural edits when `edit` or `replace` is too narrow.
+
+Example:
 
 ```json
 {
@@ -151,8 +247,7 @@ Example patch:
 }
 ```
 
-Currently supported patch ops:
-
+Current patch ops:
 - `replace_text`
 - `replace_all`
 - `edit_paragraph`
@@ -167,18 +262,49 @@ Currently supported patch ops:
 - `fill_field`
 - `set_checkbox`
 
-### `xml` — safe escape hatch
-
-For anything the other commands can't do, work with the raw XML directly:
+## `unpack` — deep inspection
 
 ```bash
-deword xml report.docx                                    # show document.xml
-deword xml report.docx -p word/styles.xml                 # show specific file
-deword xml report.docx --list                             # list all ZIP contents
-deword xml report.docx --set word/document.xml -i new.xml # replace a file
+deword unpack report.docx -o ./docx-work
 ```
 
-Handles ZIP repacking safely. Validates XML before writing.
+Creates agent-friendly files such as:
+- `CONTENT.md`
+- `content.json`
+- `xml/`
+- `media/`
+- `manifest.json`
+
+## `xml` — safe escape hatch
+
+```bash
+deword xml report.docx
+deword xml report.docx -p word/styles.xml
+deword xml report.docx --list
+deword xml report.docx --set word/document.xml -i new.xml
+```
+
+Use XML mode only when higher-level commands cannot express the change.
+
+## Recommended agent workflow
+
+### Existing document
+
+```bash
+deword read <file> -f summary
+deword read <file> -f model
+# choose edit / replace / fill / formula / patch
+deword read <file>
+```
+
+### New document
+
+```bash
+deword new <file>
+deword formula <file> --replace "<empty>" --latex "E = mc^2"
+# or deword edit / replace / patch
+deword read <file>
+```
 
 ## Formats
 
@@ -190,33 +316,33 @@ Handles ZIP repacking safely. Validates XML before writing.
 
 Detection is by magic bytes, not extension.
 
-## Agent Integration
+## Agent integration
 
-deword is built to be used by AI coding agents. There are several ways to integrate it:
+### `deword help`
 
-### AGENTS.md (automatic for many agents)
+The CLI help is designed to be enough for a first-time agent:
 
-The repo includes an `AGENTS.md` file at the root. Agents that support this convention (Claude Code, Cursor, pi, etc.) will automatically pick up the instructions when working in the repo.
+```bash
+deword help
+deword help formula
+deword help patch
+```
+
+### `AGENTS.md`
+
+This repo includes an `AGENTS.md` file at the root. Agents that support that convention can pick it up automatically.
 
 ### Pi skill
 
-Copy the `skill/` directory into your pi skills folder:
+Copy the `skill/` directory into your Pi skills folder:
 
 ```bash
 cp -r skill/ ~/.pi/agent/skills/deword
 ```
 
-Or add to your project's `.pi/skills/` directory. Pi will auto-discover it and load the instructions when you work with Word files.
+Or add it to your project’s `.pi/skills/` directory.
 
-### Other agents
-
-Point your agent at the `AGENTS.md` file, or simply tell it:
-
-> Use `deword` to read and edit Word documents. Install with `npm install -g deword` if not available.
-
-### npx (zero-install)
-
-Any agent with shell access can use deword without pre-installing:
+### Zero-install via `npx`
 
 ```bash
 npx deword read document.docx
@@ -228,9 +354,10 @@ npx deword edit document.docx --old "foo" --new "bar"
 | | Raw XML | python-docx script | deword |
 |---|---|---|---|
 | Tokens (1.1MB docx) | 198,613 | 5,600 | 6,255 |
-| Formatting | ❌ | ❌ | ✅ |
+| Formatting preserved | ❌ | ❌ | ✅ |
 | Tables | ❌ | Bare text | ✅ Markdown |
 | Images | ❌ | ❌ | ✅ Auto-extracted |
+| Real Word equations | ❌ | Fragile/manual | ✅ |
 | Editing | Manual XML surgery | Fragile | ✅ One command |
 | Round-trips | 0 | 2-3 | 1 |
 
